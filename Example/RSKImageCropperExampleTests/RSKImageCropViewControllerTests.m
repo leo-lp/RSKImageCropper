@@ -78,24 +78,6 @@
 
 @end
 
-@interface RSKImageCropViewControllerDataSourceObject2 : NSObject <RSKImageCropViewControllerDataSource>
-
-@end
-
-@implementation RSKImageCropViewControllerDataSourceObject2
-
-- (CGRect)imageCropViewControllerCustomMaskRect:(RSKImageCropViewController *)controller
-{
-    return CGRectZero;
-};
-
-- (UIBezierPath *)imageCropViewControllerCustomMaskPath:(RSKImageCropViewController *)controller
-{
-    return [UIBezierPath bezierPath];
-};
-
-@end
-
 @interface RSKImageCropViewControllerDelegateObject1 : NSObject <RSKImageCropViewControllerDelegate>
 
 @end
@@ -103,18 +85,9 @@
 @implementation RSKImageCropViewControllerDelegateObject1
 
 - (void)imageCropViewController:(RSKImageCropViewController *)controller willCropImage:(UIImage *)originalImage {}
-- (void)imageCropViewController:(RSKImageCropViewController *)controller didCropImage:(UIImage *)croppedImage usingCropRect:(CGRect)cropRect {};
+- (void)imageCropViewController:(RSKImageCropViewController *)controller didCropImage:(UIImage *)croppedImage usingCropRect:(CGRect)cropRect rotationAngle:(CGFloat)rotationAngle {};
 - (void)imageCropViewControllerDidCancelCrop:(RSKImageCropViewController *)controller {};
-
-@end
-
-@interface RSKImageCropViewControllerDelegateObject2 : NSObject <RSKImageCropViewControllerDelegate>
-
-@end
-
-@implementation RSKImageCropViewControllerDelegateObject2
-
-- (void)imageCropViewController:(RSKImageCropViewController *)controller didCropImage:(UIImage *)croppedImage usingCropRect:(CGRect)cropRect rotationAngle:(CGFloat)rotationAngle {}
+- (void)imageCropViewControllerDidDisplayImage:(RSKImageCropViewController *)controller {};
 
 @end
 
@@ -122,6 +95,7 @@ static const CGFloat kLayoutImageScrollViewAnimationDuration = 0.25;
 
 @interface RSKImageCropViewController (Testing)
 
+@property (readonly, nonatomic) CGRect imageRect;
 @property (strong, nonatomic) RSKImageScrollView *imageScrollView;
 @property (assign, nonatomic) BOOL originalNavigationControllerNavigationBarHidden;
 @property (assign, nonatomic) BOOL originalStatusBarHidden;
@@ -130,7 +104,7 @@ static const CGFloat kLayoutImageScrollViewAnimationDuration = 0.25;
 
 - (void)cancelCrop;
 - (void)cropImage;
-- (UIImage *)croppedImage:(UIImage *)image cropMode:(RSKImageCropMode)cropMode cropRect:(CGRect)cropRect rotationAngle:(CGFloat)rotationAngle zoomScale:(CGFloat)zoomScale maskPath:(UIBezierPath *)maskPath applyMaskToCroppedImage:(BOOL)applyMaskToCroppedImage;
+- (UIImage *)croppedImage:(UIImage *)originalImage cropMode:(RSKImageCropMode)cropMode cropRect:(CGRect)cropRect imageRect:(CGRect)imageRect rotationAngle:(CGFloat)rotationAngle zoomScale:(CGFloat)zoomScale maskPath:(UIBezierPath *)maskPath applyMaskToCroppedImage:(BOOL)applyMaskToCroppedImage;
 - (void)displayImage;
 - (void)handleDoubleTap:(UITapGestureRecognizer *)gestureRecognizer;
 - (void)handleRotation:(UIRotationGestureRecognizer *)gestureRecognizer;
@@ -228,7 +202,7 @@ describe(@"empty space around the image", ^{
 
 describe(@"crop image", ^{
     dispatch_block_t sharedIt = ^{
-        UIImage *croppedImage = [imageCropViewController croppedImage:imageCropViewController.originalImage cropMode:imageCropViewController.cropMode cropRect:imageCropViewController.cropRect rotationAngle:imageCropViewController.rotationAngle zoomScale:imageCropViewController.zoomScale maskPath:imageCropViewController.maskPath applyMaskToCroppedImage:imageCropViewController.applyMaskToCroppedImage];
+        UIImage *croppedImage = [imageCropViewController croppedImage:imageCropViewController.originalImage cropMode:imageCropViewController.cropMode cropRect:imageCropViewController.cropRect imageRect:imageCropViewController.imageRect rotationAngle:imageCropViewController.rotationAngle zoomScale:imageCropViewController.zoomScale maskPath:imageCropViewController.maskPath applyMaskToCroppedImage:imageCropViewController.applyMaskToCroppedImage];
         
         expect(croppedImage).notTo.beNil();
         expect(croppedImage.imageOrientation).to.equal(UIImageOrientationUp);
@@ -697,31 +671,6 @@ describe(@"dataSource", ^{
         });
     });
     
-    describe(@"without optional methods", ^{
-        __block id <RSKImageCropViewControllerDataSource> dataSourceObject = nil;
-        
-        before(^{
-            dataSourceObject = [[RSKImageCropViewControllerDataSourceObject2 alloc] init];
-            imageCropViewController.dataSource = dataSourceObject;
-        });
-        
-        it(@"sets the right custom movement rect", ^{
-            [imageCropViewController view];
-            
-            [imageCropViewController.view setNeedsUpdateConstraints];
-            [imageCropViewController.view updateConstraintsIfNeeded];
-            
-            [imageCropViewController.view setNeedsLayout];
-            [imageCropViewController.view layoutIfNeeded];
-            
-            expect(imageCropViewController.imageScrollView.frame).to.equal(imageCropViewController.maskRect);
-        });
-        
-        after(^{
-            dataSourceObject = nil;
-        });
-    });
-    
     after(^{
         imageCropViewController = nil;
     });
@@ -739,20 +688,6 @@ describe(@"delegate", ^{
         id delegateMock = [OCMockObject partialMockForObject:delegateObject];
         
         [[delegateMock expect] imageCropViewController:imageCropViewController willCropImage:OCMOCK_ANY];
-        [[delegateMock expect] imageCropViewController:imageCropViewController didCropImage:OCMOCK_ANY usingCropRect:imageCropViewController.cropRect];
-        
-        [imageCropViewController cropImage];
-        
-        [delegateMock verifyWithDelay:1.0];
-        [delegateMock stopMocking];
-    });
-    
-    it(@"calls the appropriate delegate method after cropping image", ^{
-        RSKImageCropViewControllerDelegateObject2 *delegateObject = [[RSKImageCropViewControllerDelegateObject2 alloc] init];
-        imageCropViewController.delegate = delegateObject;
-        
-        id delegateMock = [OCMockObject partialMockForObject:delegateObject];
-        
         [[delegateMock expect] imageCropViewController:imageCropViewController didCropImage:OCMOCK_ANY usingCropRect:imageCropViewController.cropRect rotationAngle:imageCropViewController.rotationAngle];
         
         [imageCropViewController cropImage];
@@ -770,6 +705,21 @@ describe(@"delegate", ^{
         [[delegateMock expect] imageCropViewControllerDidCancelCrop:imageCropViewController];
         
         [imageCropViewController cancelCrop];
+        
+        [delegateMock verify];
+        [delegateMock stopMocking];
+    });
+    
+    it(@"calls the appropriate delegate method when the image is displayed", ^{
+        RSKImageCropViewControllerDelegateObject1 *delegateObject = [[RSKImageCropViewControllerDelegateObject1 alloc] init];
+        imageCropViewController.delegate = delegateObject;
+        imageCropViewController.originalImage = originalImage;
+        
+        id delegateMock = [OCMockObject partialMockForObject:delegateObject];
+        
+        [[delegateMock expect] imageCropViewControllerDidDisplayImage:imageCropViewController];
+        
+        [imageCropViewController displayImage];
         
         [delegateMock verify];
         [delegateMock stopMocking];
@@ -1007,34 +957,45 @@ describe(@"rotation", ^{
 });
 
 describe(@"status bar", ^{
-    it(@"hides status bar in viewWillAppear:", ^{
-        UIApplication *application = [UIApplication sharedApplication];
-        id mock = [OCMockObject partialMockForObject:application];
+    if (@available(iOS 7.0, *)) {
         
-        [[mock expect] setStatusBarHidden:YES];
+        it(@"hides status bar", ^{
+            
+            imageCropViewController = [[RSKImageCropViewController alloc] init];
+            expect(imageCropViewController.prefersStatusBarHidden).to.beTruthy();
+        });
+    }
+    else {
         
-        imageCropViewController = [[RSKImageCropViewController alloc] init];
-        [imageCropViewController view];
-        [imageCropViewController viewWillAppear:NO];
+        it(@"hides status bar in viewWillAppear:", ^{
+            UIApplication *application = [UIApplication sharedApplication];
+            id mock = [OCMockObject partialMockForObject:application];
+            
+            [[mock expect] setStatusBarHidden:YES];
+            
+            imageCropViewController = [[RSKImageCropViewController alloc] init];
+            [imageCropViewController view];
+            [imageCropViewController viewWillAppear:NO];
+            
+            [mock verify];
+        });
         
-        [mock verify];
-    });
-    
-    it(@"restores visibility of the status bar in viewWillDisappear:", ^{
-        imageCropViewController = [[RSKImageCropViewController alloc] init];
-        
-        UIApplication *application = [UIApplication sharedApplication];
-        id mock = [OCMockObject partialMockForObject:application];
-        
-        [imageCropViewController view];
-        [imageCropViewController viewWillAppear:NO];
-        
-        [[mock expect] setStatusBarHidden:imageCropViewController.originalStatusBarHidden];
-        
-        [imageCropViewController viewWillDisappear:NO];
-        
-        [mock verify];
-    });
+        it(@"restores visibility of the status bar in viewWillDisappear:", ^{
+            imageCropViewController = [[RSKImageCropViewController alloc] init];
+            
+            UIApplication *application = [UIApplication sharedApplication];
+            id mock = [OCMockObject partialMockForObject:application];
+            
+            [imageCropViewController view];
+            [imageCropViewController viewWillAppear:NO];
+            
+            [[mock expect] setStatusBarHidden:imageCropViewController.originalStatusBarHidden];
+            
+            [imageCropViewController viewWillDisappear:NO];
+            
+            [mock verify];
+        });
+    }
 });
 
 describe(@"taps", ^{
@@ -1067,6 +1028,31 @@ describe(@"taps", ^{
         [imageCropViewController onChooseButtonTouch:nil];
         
         [mock verify];
+    });
+    
+    after(^{
+        imageCropViewController = nil;
+    });
+});
+
+describe(@"zoomToRect", ^{
+    before(^{
+        imageCropViewController = [[RSKImageCropViewController alloc] initWithImage:originalImage];
+        sharedLoadView();
+    });
+    
+    it(@"zooms to a specific area of the image", ^{
+        CGRect rect = CGRectMake(100.0, 100.0, 400.0, 400.0);
+        [imageCropViewController zoomToRect:rect animated:NO];
+        
+        UIScrollView *imageScrollView = imageCropViewController.imageScrollView;
+        CGRect visibleRect = CGRectMake(round(imageScrollView.contentOffset.x / imageScrollView.zoomScale),
+                                        round(imageScrollView.contentOffset.y / imageScrollView.zoomScale),
+                                        imageScrollView.bounds.size.width / imageScrollView.zoomScale,
+                                        imageScrollView.bounds.size.height / imageScrollView.zoomScale);
+        
+        BOOL contains = CGRectContainsRect(visibleRect, rect);
+        expect(contains).to.beTruthy();
     });
     
     after(^{

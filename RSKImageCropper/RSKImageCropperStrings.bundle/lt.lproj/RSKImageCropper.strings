@@ -1,7 +1,7 @@
 //
-// RSKInternalUtility.m
+// RSKImageCropper.strings
 //
-// Copyright (c) 2015-present Ruslan Skorb, http://ruslanskorb.com/
+// Copyright (c) 2014-present Ruslan Skorb, http://ruslanskorb.com/
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,27 +22,9 @@
 // THE SOFTWARE.
 //
 
-#import "RSKInternalUtility.h"
-
-NSString * RSKLocalizedString(NSString *key, NSString *comment)
-{
-    return [[[RSKInternalUtility class] bundleForStrings] localizedStringForKey:key value:key table:@"RSKImageCropper"];
-}
-
-@implementation RSKInternalUtility
-
-+ (NSBundle *)bundleForStrings
-{
-    static NSBundle *bundle;
-    
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSBundle *bundleForClass = [NSBundle bundleForClass:[self class]];
-        NSString *stringsBundlePath = [bundleForClass pathForResource:@"RSKImageCropperStrings" ofType:@"bundle"];
-        bundle = [NSBundle bundleWithPath:stringsBundlePath] ?: bundleForClass;
-    });
-    
-    return bundle;
-}
-
-@end
+/* Move and Scale label */
+"Move and Scale" = "Judinti ir keisti mastelį";
+/* Cancel button */
+"Cancel" = "Atšaukti";
+/* Choose button */
+"Choose" = "Pasirinkti";
